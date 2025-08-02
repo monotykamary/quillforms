@@ -1,0 +1,52 @@
+name: Test Docker Builds
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - '.docker/**'
+      - '.github/workflows/docker-*'
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  test-builds:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Test npm image build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./.docker
+          file: ./.docker/node.dockerfile
+          push: false
+          tags: test-npm:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test wordpress image build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./.docker
+          file: ./.docker/wordpress.dockerfile
+          push: false
+          tags: test-wordpress:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test images
+        run: |
+          echo "Testing npm image..."
+          docker run --rm test-npm:latest node --version
+          
+          echo "Testing wordpress image..."
+          docker run --rm test-wordpress:latest php --version
